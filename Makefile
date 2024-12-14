@@ -1,6 +1,6 @@
-.PHONY: clean common bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake
+.PHONY: clean common bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake vis
 
-all: bspinfo light modelgen qbsp qcc qlumpy sprgen texmake
+all: bspinfo light modelgen qbsp qcc qlumpy sprgen texmake vis
 
 common:
 	make -C common
@@ -32,6 +32,9 @@ sprgen: common
 texmake: common
 	make -C $@
 
+vis: common
+	make -C $@
+
 clean:
 	make clean -C common
 	make clean -C bspinfo
@@ -43,3 +46,4 @@ clean:
 	make clean -C qlumpy
 	make clean -C sprgen
 	make clean -C texmake
+	make clean -C vis
