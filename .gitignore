@@ -14,3 +14,6 @@
 
 *.o
 
+bspinfo/bspinfo
+light/light
+
