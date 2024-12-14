@@ -5,3 +5,12 @@
 *.PDB
 *.BAT
 
+*.exe
+*.mak
+*.mdp
+*.ncb
+*.pdb
+*.bat
+
+*.o
+
