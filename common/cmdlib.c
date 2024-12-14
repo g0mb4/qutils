@@ -12,6 +12,10 @@
 #include <libc.h>
 #endif
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 #define PATHSEPERATOR   '/'
 
 // set these before calling CheckParm
@@ -116,7 +120,11 @@ char *ExpandPathAndArchive (char *path)
 
 	if (archive)
 	{
-		sprintf (archivename, "%s/%s", archivedir, path);
+		int n = snprintf (archivename, sizeof(archivename) - 1,
+						  "%s/%s", archivedir, path);
+		if (n <= 0)
+			Error("archive");
+
 		CopyFile (expanded, archivename);
 	}
 	return expanded;
@@ -169,7 +177,8 @@ void Q_getwd (char *out)
    _getcwd (out, 256);
    strcat (out, "\\");
 #else
-   getwd (out);
+   // NOTE(gmb): To pacify gcc, 512 should be enough ...
+   getcwd (out, 512);
 #endif
 }
 
