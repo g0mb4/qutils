@@ -16,4 +16,6 @@
 
 bspinfo/bspinfo
 light/light
+modelgen/modelgen
+qbsp/qbsp
 
