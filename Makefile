@@ -1,6 +1,6 @@
 .PHONY: dir clean common bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake vis
 
-all: bspinfo light modelgen qbsp qcc qlumpy sprgen texmake vis
+all: bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake vis
 
 dir:
 	mkdir -p bin
