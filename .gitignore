@@ -25,3 +25,5 @@ sprgen/sprgen
 texmake/texmake
 vis/vis
 
+bin/
+

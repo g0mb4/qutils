@@ -1,41 +1,55 @@
-.PHONY: clean common bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake vis
+.PHONY: dir clean common bspinfo light modelgen qbsp qcc qfiles qlumpy sprgen texmake vis
 
 all: bspinfo light modelgen qbsp qcc qlumpy sprgen texmake vis
+
+dir:
+	mkdir -p bin
 
 common:
 	make -C common
 
-bspinfo: common
+bspinfo: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-light: common
+light: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-modelgen: common
+modelgen: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-qbsp: common
+qbsp: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-qcc: common
+qcc: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-qfiles: common
+qfiles: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-qlumpy: common
+qlumpy: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-sprgen: common
+sprgen: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-texmake: common
+texmake: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
-vis: common
+vis: dir common
 	make -C $@
+	cp $@/$@ bin/$@
 
 clean:
+	rm -rf bin/*
 	make clean -C common
 	make clean -C bspinfo
 	make clean -C light
