@@ -1,6 +1,6 @@
-.PHONY:  clean common bspinfo light modelgen qbsp qcc qfiles
+.PHONY:  clean common bspinfo light modelgen qbsp qcc qfiles qlumpy
 
-all: bspinfo light modelgen qbsp qcc
+all: bspinfo light modelgen qbsp qcc qlumpy
 
 common:
 	make -C common
@@ -23,6 +23,9 @@ qcc: common
 qfiles: common
 	make -C $@
 
+qlumpy: common
+	make -C $@
+
 clean:
 	make clean -C common
 	make clean -C bspinfo
@@ -31,3 +34,4 @@ clean:
 	make clean -C qbsp
 	make clean -C qcc
 	make clean -C qfiles
+	make clean -C qlumpy
