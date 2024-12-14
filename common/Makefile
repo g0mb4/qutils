@@ -5,5 +5,3 @@ all: $(OBJS)
 
 include ../qutils.inc
 
-clean:
-	rm -rf *.o
