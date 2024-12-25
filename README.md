@@ -4,15 +4,34 @@ Quake Utilities from id.
 
 ## Why?
 
-This verison allows qutils to be built on modern Linux systems.
+This verison allows qutils to be built on modern Windows/Linux systems.
 
 Original source: https://github.com/id-Software/Quake-Tools/tree/master/qutils
 
 ## How?
+
+**Windows**:
+Open developer command prompt and type:
+
 ```bash
+cd qutils
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+nmake
+```
+
+**Linux**:
+
+```bash
+cd qutils
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
-everything will be in `./bin`.
+
+everything will be in `build/`.
 
 ## What?
 
