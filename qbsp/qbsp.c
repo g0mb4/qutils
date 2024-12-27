@@ -953,12 +953,14 @@ int main (int argc, char **argv)
 	double		start, end;
 	char		sourcename[1024];
 	char		destname[1024];
-	
+	qboolean	gamedir_cwd;	
+
 //	malloc_debug (15);
 
 //
 // check command line flags
 //
+	gamedir_cwd = false;
 	for (i=1 ; i<argc ; i++)
 	{
 		if (argv[i][0] != '-')
@@ -987,14 +989,19 @@ int main (int argc, char **argv)
 			subdivide_size = atoi(argv[i+1]);
 			i++;
 		}
+		else if (!strcmp (argv[i],"-cwd"))
+			gamedir_cwd = true;
 		else
 			Error ("qbsp: Unknown option '%s'", argv[i]);
 	}
 	
 	if (i != argc - 2 && i != argc - 1)
-		Error ("usage: qbsp [options] sourcefile [destfile]\noptions: -nojunc -nofill -threads[124] -draw -onlyents -verbose -proj <projectpath>");
+		Error ("usage: qbsp [options] sourcefile [destfile]\noptions: -nojunc -nofill -threads[124] -draw -onlyents -verbose -cwd -proj <projectpath>");
 
-	SetQdirFromPath (argv[i]);
+	if (!gamedir_cwd)
+		SetQdirFromPath (argv[i]);
+	else
+		SetQdirAsCwd ();
 
 //
 // let forked processes change name for ps status
