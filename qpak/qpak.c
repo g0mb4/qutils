@@ -102,20 +102,15 @@ void Check (char *filename)
 	exit (0);
 }
 
-void Extract (char *filename)
+void Extract (pakentry_t *file, char *dir)
 {
-	pakentry_t	*file;
 	/* file name is max 56 chars */
 	char		file_base[64];
 	char		file_ext[64];
-	char		extracted_filename[64];
+	char		extracted_filename[2048];	/* maybe? */
+	char 		path[2048];
 	FILE		*efp;
 	void		*buffer;
-	
-	file = FindFile (filename);
-	
-	if (!file)
-		Error ("%s is not found", filename);
 	
 	buffer = malloc(file->size);
 	if (!buffer)
@@ -126,17 +121,52 @@ void Extract (char *filename)
 	
 	SafeRead (fp, buffer, file->size);
 	
-	ExtractFileBase (filename, file_base);
-	ExtractFileExtension (filename, file_ext);
+	if (dir) 
+	{
+		snprintf (extracted_filename, sizeof(extracted_filename), 
+				  "%s/%s", dir, file->filename);
+		
+		ExtractFilePath (extracted_filename, path);
+		CreatePath (path);
+	}
+	else
+	{
+		ExtractFileBase (file->filename, file_base);
+		ExtractFileExtension (file->filename, file_ext);
 	
-	snprintf (extracted_filename, sizeof(extracted_filename), 
-			  "%s.%s", file_base, file_ext);
-			  
+		snprintf (extracted_filename, sizeof(extracted_filename), 
+				  "%s.%s", file_base, file_ext);
+	}
+	
 	efp = SafeOpenWrite (extracted_filename);
 	SafeWrite (efp, buffer, file->size);
 	fclose (efp);
 	
+	free (buffer);
+	
 	printf ("%s is extracted\n", extracted_filename);
+}
+
+void ExtractFile (char *filename)
+{
+	pakentry_t	*file;
+
+	file = FindFile (filename);
+	
+	if (!file)
+		Error ("%s is not found", filename);
+	
+	Extract (file, NULL);
+	
+	exit (0);
+}
+
+void ExtractAll (char *dir)
+{
+	int i;
+	
+	for (i=0 ; i<pak_entry_ctr ; ++i)
+		Extract (&pak_entries[i], dir);
 	
 	exit (0);
 }
@@ -144,8 +174,9 @@ void Extract (char *filename)
 char usage[] = "usage: qpak [options] pakfile\n"
 			   "options:\n"
 			   "-list\t\tlists the content of pakfile\n"
-			   "-check file\t\tchecks if pakfile contains file\n"
-			   "-extract file\textracts file without directory\n";
+			   "-check file\tchecks if pakfile contains file\n"
+			   "-extract file\textracts file without directory\n"
+			   "-extractall dir\textracts the content of pakfile into dir while keeping the structure\n";
 
 int main (int argc, char *argv[])
 {
@@ -155,11 +186,17 @@ int main (int argc, char *argv[])
 	qboolean	dolist;
 	qboolean	docheck;
 	qboolean	doextract;
+	qboolean	doextractall;
 	char		*file;
+	char		*dir;
 	
+	pakfile = NULL;
 	dolist = false;
 	docheck = false;
 	doextract = false;
+	doextractall = false;
+	file = NULL;
+	dir = NULL;
 
 	if (argc < 2) {
 		Error (usage); 
@@ -174,17 +211,36 @@ int main (int argc, char *argv[])
 		{
 			docheck = true;
 			file = argv[++i];
+			
+			if(!file)
+				Error ("Invalid file");
 		}
 		else if (!strcmp (argv[i], "-extract"))
 		{
 			doextract = true;
 			file = argv[++i];
+			
+			if(!file)
+				Error ("Invalid file");
+		}
+		else if (!strcmp (argv[i], "-extractall"))
+		{
+			doextractall = true;
+			dir = argv[++i];
+			
+			if(!dir)
+				Error ("Invalid directory");
 		}
 		else
 			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
 	
 	pakfile = argv[i];
+	if (!pakfile)
+		Error ("pakfile is missing");
+	
+	printf ("asd: %s\n", pakfile);
+	
 	LoadPak (pakfile);
 	
 	printf ("%s contains %d files.\n", pakfile, pak_entry_ctr);
@@ -194,7 +250,9 @@ int main (int argc, char *argv[])
 	else if (docheck)
 		Check (file);
 	else if (doextract)
-		Extract (file);
+		ExtractFile (file);
+	else if (doextractall)
+		ExtractAll (dir);
 	
 	return 0;
 }
