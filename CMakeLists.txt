@@ -3,6 +3,8 @@ project(qutils C)
 
 set(CMAKE_C_STANDARD 99)
 
+#== id Software ==============================================================
+
 # common libs
 add_library(bspfile OBJECT common/bspfile.c)
 add_library(cmdlib OBJECT common/cmdlib.c)
@@ -91,4 +93,12 @@ target_link_libraries(vis cmdlib bspfile mathlib)
 if(NOT WIN32)
   target_link_libraries(vis m)
 endif(NOT WIN32)
+
+#== gmb ======================================================================
+
+# qpak
+file(GLOB_RECURSE src qpak/*.c)
+add_executable(qpak ${src})
+target_include_directories(qpak PUBLIC ./common)
+target_link_libraries(qpak cmdlib)
 

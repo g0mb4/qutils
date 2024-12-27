@@ -35,6 +35,8 @@ everything will be in `build/`.
 
 ## What?
 
+### Original utilities
+
 `qbsp` / `light` / `vis`: these utilities are called directly from the map editor to process *.map* files into *.bsp* files.  They can be executed by hand if desired.
 
 `bspinfo`: a command line utility that will dump the count and size statistics on a *.bsp* file.
@@ -50,12 +52,19 @@ everything will be in `build/`.
 `modelgen`: the 3-D model grabber.  Combines skin graphics with 3d frames to produce a *.mdl* file.  The commands are parsed out of *.qc* files that can also be read by `qcc`, so a single source can both generate and use the data.
 
 `texmake`: creates 2d wireframe outlines of a 3d model that can be drawn on to give a texture to a model.  This is only done once per model, or when the base frame changes.
+
 Example:
-`cd ~/quake/id1/models/torch`
-`texmake base`                  reads base.tri and creates the graphic base.lbm
-`copy base.lbm skin.lbm`        never work on the base skin, it might get overwritten
-`cd ~/quake/id1/progs`
-`modelgen torch.qc`             creates torch.mdl out of files in ~/quake/id1/models/torch
+```bash
+cd ~/quake/id1/models/torch`
+texmake base`                  # reads base.tri and creates the graphic base.lbm
+copy base.lbm skin.lbm`        # never work on the base skin, it might get overwritten
+cd ~/quake/id1/progs`
+modelgen torch.qc`             # creates torch.mdl out of files in ~/quake/id1/models/torch
+```
+
+### My utilities
+
+`qpak`: viewing *.pak* files.
 
 ## Example
 
