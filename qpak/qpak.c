@@ -26,26 +26,19 @@ typedef struct
 
 
 FILE	*fp;
-char	file_base[1024];
-char	file_ext[32];
 
 pakheader_t		pak_header;
 pakentry_t		pak_entries[4096];	// from qfiles.c
 int				pak_entry_ctr = 0;
 
-static void LoadPak (const char *pakfile)
+void LoadPak (char *pakfile)
 {
-	int			n;
-	int			i, num_entries;
+	int			i;
+	int			num_entries;
 	pakentry_t	pak_entry;
 	
-	fp = fopen (pakfile, "rb");
-	if (!fp)
-		Error ("Unable to open %s: %s", pakfile, strerror(errno));
-	
-	n = fread (&pak_header, 1, sizeof(pakheader_t), fp);
-	if (n != sizeof(pakheader_t))
-		Error ("Unable to read header");
+	fp = SafeOpenRead (pakfile);
+	SafeRead (fp, &pak_header, sizeof(pakheader_t));
 	
 	if (memcmp(pak_header.magic, "PACK", 4) != 0)
 		Error ("Not a PAK file");
@@ -57,55 +50,151 @@ static void LoadPak (const char *pakfile)
 	if (num_entries >= (sizeof(pak_entries) / sizeof(pak_entries[0])))
 		Error ("Too many files");
 	
-	ExtractFileBase (pakfile, file_base);
-	ExtractFileExtension (pakfile, file_ext);
-	
 	if (fseek (fp, pak_header.diroffset, SEEK_SET) != 0)
 		Error ("Seek error: %s", strerror(errno));
 	
-	for (i = 0; i < num_entries; ++i) {
-		n = fread (&pak_entry, 1, sizeof(pakentry_t), fp);
-		if (n != sizeof(pakentry_t))
-			Error ("Unable to read entry %d", i);
+	for (i = 0; i < num_entries; ++i)
+	{
+		SafeRead (fp, &pak_entry, sizeof(pakentry_t));
 		
 		pak_entry.offset = LittleLong(pak_entry.offset);
 		pak_entry.size = LittleLong(pak_entry.size);
 
 		pak_entries[pak_entry_ctr++] = pak_entry;
 	}
-	
-	fclose(fp);
 }
+
+void List (void)
+{
+	int i;
+	
+	for (i=0 ; i<pak_entry_ctr ; ++i)
+		printf ("%s - %u B\n", pak_entries[i].filename, pak_entries[i].size);
+	
+	exit (0);
+}
+
+pakentry_t *FindFile (char *filename)
+{
+	int i;
+	
+	for (i=0 ; i<pak_entry_ctr ; ++i)
+	{
+		if (!strcmp (pak_entries[i].filename, filename))
+		{
+			return &pak_entries[i];
+		}
+	}
+	
+	return NULL;
+}
+
+void Check (char *filename)
+{
+	pakentry_t	*file;
+	
+	file = FindFile (filename);
+	
+	if (!file)
+		Error ("%s is not found\n", filename);
+	
+	printf ("%s is found\n", filename);
+	exit (0);
+}
+
+void Extract (char *filename)
+{
+	pakentry_t	*file;
+	/* file name is max 56 chars */
+	char		file_base[64];
+	char		file_ext[64];
+	char		extracted_filename[64];
+	FILE		*efp;
+	void		*buffer;
+	
+	file = FindFile (filename);
+	
+	if (!file)
+		Error ("%s is not found", filename);
+	
+	buffer = malloc(file->size);
+	if (!buffer)
+		Error ("Unable to allocate buffer");
+	
+	if (fseek (fp, file->offset, SEEK_SET) != 0)
+		Error ("Seek error: %s", strerror(errno));
+	
+	SafeRead (fp, buffer, file->size);
+	
+	ExtractFileBase (filename, file_base);
+	ExtractFileExtension (filename, file_ext);
+	
+	snprintf (extracted_filename, sizeof(extracted_filename), 
+			  "%s.%s", file_base, file_ext);
+			  
+	efp = SafeOpenWrite (extracted_filename);
+	SafeWrite (efp, buffer, file->size);
+	fclose (efp);
+	
+	printf ("%s is extracted\n", extracted_filename);
+	
+	exit (0);
+}
+
+char usage[] = "usage: qpak [options] pakfile\n"
+			   "options:\n"
+			   "-list\t\tlists the content of pakfile\n"
+			   "-check file\t\tchecks if pakfile contains file\n"
+			   "-extract file\textracts file without directory\n";
 
 int main (int argc, char *argv[])
 {
 	int			i;
-	qboolean	dolist;
 	char		*pakfile;
 	
-	dolist = false;
+	qboolean	dolist;
+	qboolean	docheck;
+	qboolean	doextract;
+	char		*file;
 	
+	dolist = false;
+	docheck = false;
+	doextract = false;
+
 	if (argc < 2) {
-		Error ("usage: qpak [options] pakfile\noptions: -list");
+		Error (usage); 
 	}
 	
 	for (i=1 ; i<argc ; ++i) {
 		if (argv[i][0] != '-')
 			break;
-		if (!strcmp (argv[i], "-list"))
+		else if (!strcmp (argv[i], "-list"))
 			dolist = true;
+		else if (!strcmp (argv[i], "-check"))
+		{
+			docheck = true;
+			file = argv[++i];
+		}
+		else if (!strcmp (argv[i], "-extract"))
+		{
+			doextract = true;
+			file = argv[++i];
+		}
 		else
-			Error ("Unknown option '%s'", argv[i]);
+			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
 	
 	pakfile = argv[i];
 	LoadPak (pakfile);
 	
-	printf ("%s.%s contains %d files.\n", file_base, file_ext, pak_entry_ctr);
+	printf ("%s contains %d files.\n", pakfile, pak_entry_ctr);
 	
 	if (dolist)
-		for (i=0 ; i<pak_entry_ctr ; ++i)
-			printf ("%s - %u B\n", pak_entries[i].filename, pak_entries[i].size);
+		List ();
+	else if (docheck)
+		Check (file);
+	else if (doextract)
+		Extract (file);
 	
 	return 0;
 }
