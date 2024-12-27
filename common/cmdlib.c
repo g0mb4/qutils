@@ -100,6 +100,12 @@ void SetQdirFromPath (char *path)
 	Error ("SeetQdirFromPath: no 'quake' in %s", path);
 }
 
+void SetQdirAsCwd (void)
+{
+	Q_getwd(gamedir);
+	Q_getwd(qdir);
+}
+
 char *ExpandPath (char *path)
 {
 	static char full[1024];
