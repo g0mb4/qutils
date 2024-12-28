@@ -64,12 +64,44 @@ void LoadPak (char *pakfile)
 	}
 }
 
-void List (void)
+char *HumanReadableSize (uint32_t size)
 {
+	static char buffer[64];
+	static const char* units[] = {"B", "kB", "MB", "GB"};
+	double fsize;
 	int i;
 	
+	i = 0;
+	fsize = size;
+	
+	while (fsize > 1024)
+	{
+		fsize /= 1024;
+		i++;
+	}
+	
+	snprintf(buffer, sizeof(buffer) - 1, "%.2f %s", fsize, units[i]);
+	return &buffer[0];
+}
+
+void List (qboolean human_readable)
+{
+	int i;
+	int len;
+	
 	for (i=0 ; i<pak_entry_ctr ; ++i)
-		printf ("%s - %u B\n", pak_entries[i].filename, pak_entries[i].size);
+	{
+		len = strlen (pak_entries[i].filename);
+		printf ("%s", pak_entries[i].filename);
+		
+		while (len++ < 56)
+			putch ('-');
+		
+		if (human_readable)
+			printf ("%s\n", HumanReadableSize (pak_entries[i].size));
+		else
+			printf ("%d B\n", pak_entries[i].size);
+	}
 	
 	exit (0);
 }
@@ -174,6 +206,7 @@ void ExtractAll (char *dir)
 char usage[] = "usage: qpak [options] pakfile\n"
 			   "options:\n"
 			   "-list\t\tlists the content of pakfile\n"
+			   "-listh\t\tlists the content of pakfile with human readable sizes\n"
 			   "-check file\tchecks if pakfile contains file\n"
 			   "-extract file\textracts file without directory\n"
 			   "-extractall dir\textracts the content of pakfile into dir while keeping the structure\n";
@@ -184,6 +217,7 @@ int main (int argc, char *argv[])
 	char		*pakfile;
 	
 	qboolean	dolist;
+	qboolean	humanlist;
 	qboolean	docheck;
 	qboolean	doextract;
 	qboolean	doextractall;
@@ -192,6 +226,7 @@ int main (int argc, char *argv[])
 	
 	pakfile = NULL;
 	dolist = false;
+	humanlist = false;
 	docheck = false;
 	doextract = false;
 	doextractall = false;
@@ -207,6 +242,11 @@ int main (int argc, char *argv[])
 			break;
 		else if (!strcmp (argv[i], "-list"))
 			dolist = true;
+		else if (!strcmp (argv[i], "-listh"))
+		{
+			dolist = true;
+			humanlist = true;
+		}
 		else if (!strcmp (argv[i], "-check"))
 		{
 			docheck = true;
@@ -239,14 +279,12 @@ int main (int argc, char *argv[])
 	if (!pakfile)
 		Error ("pakfile is missing");
 	
-	printf ("asd: %s\n", pakfile);
-	
 	LoadPak (pakfile);
 	
 	printf ("%s contains %d files.\n", pakfile, pak_entry_ctr);
 	
 	if (dolist)
-		List ();
+		List (humanlist);
 	else if (docheck)
 		Check (file);
 	else if (doextract)
