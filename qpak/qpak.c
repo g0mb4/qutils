@@ -61,7 +61,7 @@ void LoadPak (char *pakfile)
 	
 	SafeSeek (fp, pak_header.diroffset);
 	
-	for (i = 0; i < num_entries; ++i)
+	for (i=0 ; i<num_entries ; ++i)
 	{
 		SafeRead (fp, &pak_entry, sizeof(pakentry_t));
 		
@@ -78,11 +78,8 @@ char *HumanReadableSize (uint32_t size)
 {
 	static char buffer[64];
 	static const char* units[] = {"B", "kB", "MB", "GB"};
-	double fsize;
-	int i;
-	
-	i = 0;
-	fsize = size;
+	double fsize = size;
+	int i = 0;
 	
 	while (fsize > 1024)
 	{
@@ -136,7 +133,6 @@ void Check (char *filename)
 	pakentry_t	*file;
 	
 	file = FindFile (filename);
-	
 	if (!file)
 		Error ("%s is not found\n", filename);
 	
@@ -328,26 +324,16 @@ char usage[] = "usage: qpak [options] pakfile\n"
 int main (int argc, char *argv[])
 {
 	int			i;
-	char		*pakfile;
+	char		*pakfile = NULL;
 	
-	qboolean	dolist;
-	qboolean	humanlist;
-	qboolean	docheck;
-	qboolean	doextract;
-	qboolean	doextractall;
-	qboolean	docreate;
-	char		*file;
-	char		*dir;
-	
-	pakfile = NULL;
-	dolist = false;
-	humanlist = false;
-	docheck = false;
-	doextract = false;
-	doextractall = false;
-	docreate = false;
-	file = NULL;
-	dir = NULL;
+	qboolean	dolist = false;
+	qboolean	humanlist = false;
+	qboolean	docheck = false;
+	qboolean	doextract = false;
+	qboolean	doextractall = false;
+	qboolean	docreate = false;
+	char		*file = NULL;
+	char		*dir = NULL;
 
 	if (argc < 2) {
 		Error (usage); 
