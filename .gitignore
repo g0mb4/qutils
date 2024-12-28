@@ -27,3 +27,6 @@ vis/vis
 
 bin/
 build/
+
+*.swp
+
