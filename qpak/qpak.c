@@ -316,11 +316,12 @@ void Create (char *pakfile, char *dir)
 
 char usage[] = "usage: qpak [options] pakfile\n"
 			   "options:\n"
-			   "-list\t\tlists the content of pakfile\n"
-			   "-listh\t\tlists the content of pakfile with human readable sizes\n"
+			   "-list\t\tlists the contents of pakfile\n"
+			   "-listh\t\tlists the contents of pakfile with human readable sizes\n"
 			   "-check file\tchecks if pakfile contains file\n"
-			   "-extract file\textracts file without directory\n"
-			   "-extractall dir\textracts the content of pakfile into dir while keeping the structure\n"
+			   "-extract file\textracts file from pakfile without a directory structure\n"
+			   "-extractall dir\textracts the contents of pakfile into dir\n"
+			   "               \twhile keeping the directory structure\n"
 			   "-create dir\tcreates pakfile from the contents of dir\n";
 
 int main (int argc, char *argv[])
