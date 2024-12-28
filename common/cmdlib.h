@@ -95,5 +95,6 @@ void	QCopyFile (char *from, char *to);
 extern	qboolean		archive;
 extern	char			archivedir[1024];
 
+char *RemoveFirstDirFromPath (char *path);	/* NOTE: gmb */
 
 #endif

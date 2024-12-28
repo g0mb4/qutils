@@ -10,7 +10,7 @@
 #include "cmdlib.h"
 
 #ifdef WIN32
-#include "dirent.h"
+#include "windirent.h"
 #else
 #include <dirent.h>
 #endif
@@ -206,16 +206,6 @@ void ExtractAll (char *dir)
 		Extract (&pak_entries[i], dir);
 	
 	exit (0);
-}
-
-char *RemoveFirstDirFromPath (char *path)
-{
-	char *src = path;
-	
-	while (*src != '/' && *src != '\\')
-		++src;
-	
-	return src + 1;
 }
 
 void CopyFromDirectory(FILE *pakf, char *basepath)

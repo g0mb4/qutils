@@ -11,7 +11,7 @@
 #include "cmdlib.h"
 
 #ifdef WIN32
-#include "dirent.h"
+#include "windirent.h"
 #else
 #include <dirent.h>
 #endif

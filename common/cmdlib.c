@@ -890,3 +890,13 @@ void	QCopyFile (char *from, char *to)
 	SaveFile (to, buffer, length);
 	free (buffer);
 }
+
+char *RemoveFirstDirFromPath (char *path)
+{
+	char *src = path;
+	
+	while (*src != '/' && *src != '\\')
+		++src;
+	
+	return src + 1;
+}
