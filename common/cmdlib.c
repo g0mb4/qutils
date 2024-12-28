@@ -100,6 +100,11 @@ void SetQdirFromPath (char *path)
 	Error ("SeetQdirFromPath: no 'quake' in %s", path);
 }
 
+/*
+ SetQdirAsCwd()
+ 
+ Allows qbsp to use the $CWD
+*/
 void SetQdirAsCwd (void)
 {
 	Q_getwd(gamedir);
@@ -450,6 +455,11 @@ void SafeWrite (FILE *f, void *buffer, int count)
 		Error ("File read failure");
 }
 
+void SafeSeek (FILE *f, int offset)
+{
+	if (fseek (f, offset, SEEK_SET) != 0)
+		Error ("Seek error: %s", strerror(errno));
+}
 
 
 /*

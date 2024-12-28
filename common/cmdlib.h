@@ -39,7 +39,7 @@ void	Q_mkdir (char *path);
 extern	char		qdir[1024];
 extern	char		gamedir[1024];
 void SetQdirFromPath (char *path);
-void SetQdirAsCwd (void);
+void SetQdirAsCwd (void);	/* NOTE: gmb*/
 char *ExpandPath (char *path);
 char *ExpandPathAndArchive (char *path);
 
@@ -53,6 +53,7 @@ FILE	*SafeOpenWrite (char *filename);
 FILE	*SafeOpenRead (char *filename);
 void	SafeRead (FILE *f, void *buffer, int count);
 void	SafeWrite (FILE *f, void *buffer, int count);
+void	SafeSeek (FILE *f, int offset);	/* NOTE: gmb */
 
 int		LoadFile (char *filename, void **bufferptr);
 void	SaveFile (char *filename, void *buffer, int count);

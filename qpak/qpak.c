@@ -50,8 +50,7 @@ void LoadPak (char *pakfile)
 	if (num_entries >= (sizeof(pak_entries) / sizeof(pak_entries[0])))
 		Error ("Too many files");
 	
-	if (fseek (fp, pak_header.diroffset, SEEK_SET) != 0)
-		Error ("Seek error: %s", strerror(errno));
+	SafeSeek (fp, pak_header.diroffset);
 	
 	for (i = 0; i < num_entries; ++i)
 	{
@@ -148,9 +147,8 @@ void Extract (pakentry_t *file, char *dir)
 	if (!buffer)
 		Error ("Unable to allocate buffer");
 	
-	if (fseek (fp, file->offset, SEEK_SET) != 0)
-		Error ("Seek error: %s", strerror(errno));
-	
+	SafeSeek (fp, file->offset);
+
 	SafeRead (fp, buffer, file->size);
 	
 	if (dir) 
