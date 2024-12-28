@@ -356,7 +356,7 @@ int main (int argc, char *argv[])
 			docheck = true;
 			file = argv[++i];
 			
-			if(!file)
+			if (!file)
 				Error ("Invalid file");
 		}
 		else if (!strcmp (argv[i], "-extract"))
@@ -364,7 +364,7 @@ int main (int argc, char *argv[])
 			doextract = true;
 			file = argv[++i];
 			
-			if(!file)
+			if (!file)
 				Error ("Invalid file");
 		}
 		else if (!strcmp (argv[i], "-extractall"))
@@ -372,7 +372,7 @@ int main (int argc, char *argv[])
 			doextractall = true;
 			dir = argv[++i];
 			
-			if(!dir)
+			if (!dir)
 				Error ("Invalid directory");
 		}
 		else if (!strcmp (argv[i], "-create"))
@@ -380,7 +380,7 @@ int main (int argc, char *argv[])
 			docreate = true;
 			dir = argv[++i];
 			
-			if(!dir)
+			if (!dir)
 				Error ("Invalid directory");
 		}
 		else
