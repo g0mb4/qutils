@@ -10,6 +10,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "cmdlib.h"
 
+#ifdef WIN32
+#include "dirent.h"
+#else
+#include <dirent.h>
+#endif
+
 #include <stdint.h>
 
 #define	MAX_WAD_ENTRIES	4096
@@ -172,7 +178,6 @@ char *SafeFileName (char *filename)
 	static char buffer[1024];
 	int		i, n;
 	int		len;
-	int		ret;
 	
 	n = 0;
 	len = strlen(filename);
@@ -254,13 +259,167 @@ void ExtractAll (char *dir)
 	exit (0);
 }
 
+char CharFromNibble(char nibble)
+{
+	if (nibble >= '0' && nibble <= '9')
+		return nibble - '0';
+	else if (nibble >= 'A' && nibble <= 'F')
+		return nibble - 'A' + 10;
+	else 
+	{
+		Error ("Invalid nibble: %c", nibble);
+		return 0;	/* to pacify the compiler */
+	}
+}
+
+char CharFromHex(char high, char low)
+{
+	return CharFromNibble(high) << 4 | CharFromNibble(low);
+}
+
+void EntryFromFilename (wadentry_t *file, char *filename)
+{
+	char	buffer[MAX_ENTRY_NAME];
+	int		i;
+	int		n;
+	int		len;
+	char	*ext;
+	
+	len = strlen(filename);
+	n = 0;
+	for (i=0; i<len && filename[i] != '.' && i<(MAX_ENTRY_NAME - 1) ; )
+	{
+		if (filename[i] == '!')
+		{
+			buffer[n++] = CharFromHex(filename[i + 1], filename[i + 2]);
+			i += 3;
+		}
+		else
+		{
+			buffer[n++] = filename[i];
+			i += 1;
+		}
+	}
+	buffer[n] = 0;
+	
+	memcpy(file->name, buffer, i);
+	file->name[i] = 0;
+	
+	ext = &filename[i + 1];
+	if (!strncmp(ext, "PAL", 3))
+		file->type = WAD_TYPE_COLOR_PALETTE;
+	else if (!strncmp(ext, "STB", 3))
+		file->type = WAD_TYPE_STATUS_BAR;
+	else if (!strncmp(ext, "TEX", 3))
+		file->type = WAD_TYPE_MIP_TEXTURE;
+	else if (!strncmp(ext, "CON", 3))
+		file->type = WAD_TYPE_CONSOLE_PIC;
+	else if (ext[2] == 'H')
+		file->type = CharFromHex(ext[0], ext[1]);
+	else
+		Error ("%s: Unknown wad file extension", filename);
+	
+	if (ext[3] == 'C') {
+		Error ("Compressed files are not supported");
+	}
+}
+
+void CopyFromDirectory(FILE *wadf, char *basepath)
+{
+	char			path[2048];
+	struct dirent	*dp;
+	DIR				*dir;
+	wadentry_t		entry;
+	FILE			*entryf;
+	char			*entry_path;
+	void			*buffer;
+
+	dir = opendir (basepath);
+	if (!dir)
+		Error ("Unable to open %s", basepath);
+
+	while ((dp = readdir (dir)) != NULL)
+	{
+		if (!strcmp (dp->d_name, ".") || !strcmp (dp->d_name, ".."))
+			continue;
+		
+		if (dp->d_type != DT_REG)
+			Error ("%s: Invalid type: %d\n", dp->d_name, dp->d_type);
+		
+		snprintf (path, sizeof(path) - 1, "%s/%s", basepath, dp->d_name);
+		
+		entry_path = RemoveFirstDirFromPath (path);
+		entryf = SafeOpenRead (path);
+		
+		EntryFromFilename (&entry, entry_path);
+		
+		entry.offset = filelength (wadf);
+		entry.disksize = filelength (entryf);
+		entry.size = entry.disksize;
+		entry.is_compressed = 0;	/* NOTE(gmb): Compressed files are not supported */
+		
+		buffer = malloc (entry.size);
+		if (!buffer)
+			Error ("Unable to alloclate buffer");
+		
+		SafeRead (entryf, buffer, entry.size);
+		fclose (entryf);
+		
+		SafeSeek (wadf, entry.offset);
+		SafeWrite (wadf, buffer, entry.size);
+		
+		free (buffer);
+		
+		if (wad_entry_ctr >= MAX_WAD_ENTRIES)
+			Error ("Too many files");
+		
+		wad_entries[wad_entry_ctr++] = entry;
+		
+		printf ("%s added\n", entry.name);
+	}
+
+	closedir (dir);
+}
+
+void Create (char *wadfile, char *dir)
+{
+	FILE *wadf;
+	
+	memcpy(wad_header.magic, "WAD2", 4);
+	wad_header.diroffset = 0;
+	wad_header.numentries = 0;
+	
+	wad_entry_ctr = 0;
+	
+	wadf = SafeOpenWrite (wadfile);
+	SafeWrite (wadf, &wad_header, sizeof(wadhead_t));
+	
+	CopyFromDirectory (wadf, dir);
+	
+	wad_header.diroffset = filelength (wadf);
+	wad_header.numentries = wad_entry_ctr;
+	
+	SafeSeek (wadf, wad_header.diroffset);
+	SafeWrite (wadf, &wad_entries[0], wad_entry_ctr * sizeof(wadentry_t));
+	
+	SafeSeek (wadf, 0);
+	SafeWrite (wadf, &wad_header, sizeof(wadhead_t));
+	
+	fclose (wadf);
+	
+	printf ("%s created, it contains %d files.\n", wadfile, wad_entry_ctr);
+	
+	exit (0);
+}
+
 char usage[] = "usage: qwad [options] wadfile\n"
 			   "options:\n"
 			   "-list\t\tlists the contents of wadfile\n"
 			   "-listh\t\tlists the contents of wadfile with human readable sizes\n"
 			   "-check file\tchecks if wadfile contains file\n"
 			   "-extract file\textracts file from wadfile\n"
-			   "-extractall dir\textracts the contents of wadfile into dir\n";
+			   "-extractall dir\textracts the contents of wadfile into dir\n"
+			   "-create dir\tcreates wadfile from the contents of dir\n";
 
 int main (int argc, char *argv[])
 {
@@ -272,6 +431,7 @@ int main (int argc, char *argv[])
 	qboolean	docheck = false;
 	qboolean	doextract = false;
 	qboolean	doextractall = false;
+	qboolean	docreate = false;
 	
 	char		*file = NULL;
 	char		*dir = NULL;
@@ -314,6 +474,14 @@ int main (int argc, char *argv[])
 			if (!dir)
 				Error ("Invalid directory");
 		}
+		else if (!strcmp (argv[i], "-create"))
+		{
+			docreate = true;
+			dir = argv[++i];
+			
+			if (!dir)
+				Error ("Invalid directory");
+		}
 		else
 			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
@@ -322,7 +490,8 @@ int main (int argc, char *argv[])
 	if (!wadfile)
 		Error ("wadfile is missing");
 	
-	LoadWad (wadfile);
+	if (!docreate)
+		LoadWad (wadfile);
 	
 	if (dolist)
 		List (humanlist);
@@ -332,6 +501,8 @@ int main (int argc, char *argv[])
 		ExtractFile (file);
 	else if (doextractall)
 		ExtractAll (dir);
+	else if (docreate)
+		Create (wadfile, dir);
 	
 	return 0;
 }
