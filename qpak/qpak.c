@@ -12,12 +12,14 @@
 #ifdef WIN32
 #include "dirent.h"
 #else
+#include <sys/stat.h>
 #include <dirent.h>
+#define putch	putchar
 #endif
 
 #include <stdint.h>
 
-#define MAX_PAK_ENTRIES	4096	// from qfiles.c
+#define	MAX_PAK_ENTRIES	4096	// from qfiles.c
 #define	MAX_ENTRY_NAME	56
 
 typedef struct
@@ -237,7 +239,7 @@ void CopyFromDirectory(FILE *pakf, char *basepath)
 		if (!strcmp (dp->d_name, ".") || !strcmp (dp->d_name, ".."))
 			continue;
 		
-		if (dp->d_type == S_IFREG)
+		if (dp->d_type == DT_REG)
 		{
 			snprintf (path, sizeof(path) - 1, "%s/%s", basepath, dp->d_name);
 			
@@ -267,8 +269,7 @@ void CopyFromDirectory(FILE *pakf, char *basepath)
 			
 			printf ("%s added\n", entry_path);
 		}
-		
-		if (dp->d_type == S_IFDIR)
+		else if (dp->d_type == DT_DIR)
 		{
 			strcpy (path, basepath);
 			strcat (path, "/");
@@ -276,6 +277,8 @@ void CopyFromDirectory(FILE *pakf, char *basepath)
 
 			CopyFromDirectory (pakf, path);
 		}
+		else
+			Error ("%s: Invalid type: %d\n", dp->d_name, dp->d_type);
 	}
 
 	closedir (dir);
