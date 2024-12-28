@@ -167,6 +167,29 @@ void Check (char *filename)
 	exit (0);
 }
 
+char *SafeFileName (char *filename)
+{
+	static char buffer[1024];
+	int		i, n;
+	int		len;
+	int		ret;
+	
+	n = 0;
+	len = strlen(filename);
+	for (i=0; i<len && filename[i] != 0; ++i)
+	{
+		char c = filename[i];
+		if (isalnum (c) || c == '_')
+			buffer[n++] = c;
+		else
+			n += snprintf(buffer + n, sizeof(buffer) - n, "!%02X", c);
+		
+	}
+	buffer[n] = 0;
+	
+	return &buffer[0];
+}
+
 void Extract (wadentry_t *file, char *dir)
 {
 	char		*file_ext;
@@ -188,7 +211,7 @@ void Extract (wadentry_t *file, char *dir)
 	if (dir) 
 	{
 		snprintf (extracted_filename, sizeof(extracted_filename), 
-				  "%s/%s.%s", dir, file->name, file_ext);
+				  "%s/%s.%s", dir, SafeFileName (file->name), file_ext);
 		
 		ExtractFilePath (extracted_filename, path);
 		CreatePath (path);
@@ -196,7 +219,7 @@ void Extract (wadentry_t *file, char *dir)
 	else
 	{
 		snprintf (extracted_filename, sizeof(extracted_filename), 
-				  "%s.%s", file->name, file_ext);
+				  "%s.%s", SafeFileName (file->name), file_ext);
 	}
 	
 	efp = SafeOpenWrite (extracted_filename);
@@ -221,12 +244,23 @@ void ExtractFile (char *filename)
 	exit (0);
 }
 
+void ExtractAll (char *dir)
+{
+	int i;
+	
+	for (i=0 ; i<wad_entry_ctr ; ++i)
+		Extract (&wad_entries[i], dir);
+	
+	exit (0);
+}
+
 char usage[] = "usage: qwad [options] wadfile\n"
 			   "options:\n"
 			   "-list\t\tlists the contents of wadfile\n"
 			   "-listh\t\tlists the contents of wadfile with human readable sizes\n"
 			   "-check file\tchecks if wadfile contains file\n"
-			   "-extract file\textracts file from wadfile\n";
+			   "-extract file\textracts file from wadfile\n"
+			   "-extractall dir\textracts the contents of wadfile into dir\n";
 
 int main (int argc, char *argv[])
 {
@@ -237,8 +271,10 @@ int main (int argc, char *argv[])
 	qboolean	humanlist = false;
 	qboolean	docheck = false;
 	qboolean	doextract = false;
+	qboolean	doextractall = false;
 	
 	char		*file = NULL;
+	char		*dir = NULL;
 
 	if (argc < 2) {
 		Error (usage); 
@@ -270,6 +306,14 @@ int main (int argc, char *argv[])
 			if (!file)
 				Error ("Invalid file");
 		}
+		else if (!strcmp (argv[i], "-extractall"))
+		{
+			doextractall = true;
+			dir = argv[++i];
+			
+			if (!dir)
+				Error ("Invalid directory");
+		}
 		else
 			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
@@ -286,6 +330,8 @@ int main (int argc, char *argv[])
 		Check (file);
 	else if (doextract)
 		ExtractFile (file);
+	else if (doextractall)
+		ExtractAll (dir);
 	
 	return 0;
 }
