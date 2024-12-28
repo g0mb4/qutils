@@ -105,8 +105,8 @@ void List (qboolean human_readable)
 		{
 			case WAD_TYPE_COLOR_PALETTE:	memcpy (ext, "PAL", 3); break;
 			case WAD_TYPE_STATUS_BAR:		memcpy (ext, "STB", 3); break;
-			case WAD_TYPE_MIP_TEXTURE:		memcpy (ext, "MTX", 3); break;
-			case WAD_TYPE_CONSOLE_PIC:		memcpy (ext, "PIC", 3); break;
+			case WAD_TYPE_MIP_TEXTURE:		memcpy (ext, "TEX", 3); break;
+			case WAD_TYPE_CONSOLE_PIC:		memcpy (ext, "CON", 3); break;
 			default:						sprintf (ext, "%02XH", wad_entries[i].type);
 		}
 		
@@ -133,6 +133,33 @@ void List (qboolean human_readable)
 	exit (0);
 }
 
+wadentry_t *FindFile (char *filename)
+{
+	int i;
+	
+	for (i=0 ; i<wad_entry_ctr ; ++i)
+	{
+		if (!strcmp (wad_entries[i].name, filename))
+		{
+			return &wad_entries[i];
+		}
+	}
+	
+	return NULL;
+}
+
+void Check (char *filename)
+{
+	wadentry_t	*file;
+	
+	file = FindFile (filename);
+	if (!file)
+		Error ("%s is not found\n", filename);
+	
+	printf ("%s is found\n", filename);
+	exit (0);
+}
+
 char usage[] = "usage: qwad [options] wadfile\n"
 			   "options:\n"
 			   "-list\t\tlists the contents of wadfile\n"
@@ -145,6 +172,9 @@ int main (int argc, char *argv[])
 	
 	qboolean	dolist = false;
 	qboolean	humanlist = false;
+	qboolean	docheck = false;
+	
+	char		*file = NULL;
 
 	if (argc < 2) {
 		Error (usage); 
@@ -160,6 +190,14 @@ int main (int argc, char *argv[])
 			dolist = true;
 			humanlist = true;
 		}
+		else if (!strcmp (argv[i], "-check"))
+		{
+			docheck = true;
+			file = argv[++i];
+			
+			if(!file)
+				Error ("Invalid file");
+		}
 		else
 			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
@@ -172,6 +210,8 @@ int main (int argc, char *argv[])
 	
 	if (dolist)
 		List (humanlist);
+	else if (docheck)
+		Check (file);
 	
 	return 0;
 }
