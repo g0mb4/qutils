@@ -107,7 +107,7 @@ void List (qboolean human_readable)
 			case WAD_TYPE_STATUS_BAR:		memcpy (ext, "STB", 3); break;
 			case WAD_TYPE_MIP_TEXTURE:		memcpy (ext, "MTX", 3); break;
 			case WAD_TYPE_CONSOLE_PIC:		memcpy (ext, "PIC", 3); break;
-			default:						memcpy (ext, "BIN", 3);
+			default:						sprintf (ext, "%02XH", wad_entries[i].type);
 		}
 		
 		if (wad_entries[i].is_compressed)
