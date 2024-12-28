@@ -2,6 +2,7 @@
   WAD file utility for Quake
   
   based on: https://www.gamers.org/dEngine/quake/spec/quake-spec34/qkspec_7.htm#CWADF
+  and wadlib
   
   2024, Tóth János
 */
@@ -29,11 +30,11 @@ typedef struct
 typedef struct
 {
 	uint32_t offset;
-	uint32_t dsize;
-	uint32_t size;
+	uint32_t disksize;
+	uint32_t size;		// uncompressed
 	uint8_t type;
 	uint8_t is_compressed;
-	uint16_t dummy;
+	uint16_t pad;
 	char name[MAX_ENTRY_NAME];
 } wadentry_t;
 
@@ -67,7 +68,7 @@ void LoadWad (char *wadfile)
 		SafeRead (fp, &wad_entry, sizeof(wadentry_t));
 		
 		wad_entry.offset = LittleLong(wad_entry.offset);
-		wad_entry.dsize = LittleLong(wad_entry.dsize);
+		wad_entry.disksize = LittleLong(wad_entry.disksize);
 		wad_entry.size = LittleLong(wad_entry.size);
 
 		wad_entries[wad_entry_ctr++] = wad_entry;
@@ -93,41 +94,47 @@ char *HumanReadableSize (uint32_t size)
 	return &buffer[0];
 }
 
+char *GetExtension (wadentry_t *wadentry)
+{
+	static char ext[5];
+	
+	switch (wadentry->type)
+	{
+		case WAD_TYPE_COLOR_PALETTE:	memcpy (ext, "PAL", 3); break;
+		case WAD_TYPE_STATUS_BAR:		memcpy (ext, "STB", 3); break;
+		case WAD_TYPE_MIP_TEXTURE:		memcpy (ext, "TEX", 3); break;
+		case WAD_TYPE_CONSOLE_PIC:		memcpy (ext, "CON", 3); break;
+		default:						sprintf (ext, "%02XH", wadentry->type);
+	}
+	
+	if (wadentry->is_compressed)
+	{
+		ext[3] = 'C';
+		ext[4] = 0;
+	}
+	else
+		ext[3] = 0;
+	
+	return &ext[0];
+}
+
 void List (qboolean human_readable)
 {
 	int i;
 	int len;
-	char ext[5];
 	
 	for (i=0 ; i<wad_entry_ctr ; ++i)
 	{
-		switch (wad_entries[i].type)
-		{
-			case WAD_TYPE_COLOR_PALETTE:	memcpy (ext, "PAL", 3); break;
-			case WAD_TYPE_STATUS_BAR:		memcpy (ext, "STB", 3); break;
-			case WAD_TYPE_MIP_TEXTURE:		memcpy (ext, "TEX", 3); break;
-			case WAD_TYPE_CONSOLE_PIC:		memcpy (ext, "CON", 3); break;
-			default:						sprintf (ext, "%02XH", wad_entries[i].type);
-		}
-		
-		if (wad_entries[i].is_compressed)
-		{
-			ext[3] = 'C';
-			ext[4] = 0;
-		}
-		else
-			ext[3] = 0;
-		
 		len = strlen (wad_entries[i].name);
-		printf ("%-4s %s", ext, wad_entries[i].name);
+		printf ("%-4s %s", GetExtension (&wad_entries[i]), wad_entries[i].name);
 		
 		while (len++ < 53)
 			putchar ('-');
 		
 		if (human_readable)
-			printf ("%s\n", HumanReadableSize (wad_entries[i].dsize));
+			printf ("%s\n", HumanReadableSize (wad_entries[i].disksize));
 		else
-			printf ("%d B\n", wad_entries[i].dsize);
+			printf ("%d B\n", wad_entries[i].disksize);
 	}
 	
 	exit (0);
@@ -160,10 +167,66 @@ void Check (char *filename)
 	exit (0);
 }
 
+void Extract (wadentry_t *file, char *dir)
+{
+	char		*file_ext;
+	char		extracted_filename[2048];	/* maybe? */
+	char 		path[2048];
+	FILE		*efp;
+	void		*buffer;
+	
+	buffer = malloc(file->disksize);
+	if (!buffer)
+		Error ("Unable to allocate buffer");
+	
+	SafeSeek (fp, file->offset);
+
+	SafeRead (fp, buffer, file->disksize);
+	
+	file_ext = GetExtension (file);
+	
+	if (dir) 
+	{
+		snprintf (extracted_filename, sizeof(extracted_filename), 
+				  "%s/%s.%s", dir, file->name, file_ext);
+		
+		ExtractFilePath (extracted_filename, path);
+		CreatePath (path);
+	}
+	else
+	{
+		snprintf (extracted_filename, sizeof(extracted_filename), 
+				  "%s.%s", file->name, file_ext);
+	}
+	
+	efp = SafeOpenWrite (extracted_filename);
+	SafeWrite (efp, buffer, file->disksize);
+	fclose (efp);
+	
+	free (buffer);
+	
+	printf ("%s is extracted\n", extracted_filename);
+}
+
+void ExtractFile (char *filename)
+{
+	wadentry_t	*file;
+
+	file = FindFile (filename);
+	if (!file)
+		Error ("%s is not found", filename);
+	
+	Extract (file, NULL);
+	
+	exit (0);
+}
+
 char usage[] = "usage: qwad [options] wadfile\n"
 			   "options:\n"
 			   "-list\t\tlists the contents of wadfile\n"
-			   "-listh\t\tlists the contents of wadfile with human readable sizes\n";
+			   "-listh\t\tlists the contents of wadfile with human readable sizes\n"
+			   "-check file\tchecks if wadfile contains file\n"
+			   "-extract file\textracts file from wadfile\n";
 
 int main (int argc, char *argv[])
 {
@@ -173,6 +236,7 @@ int main (int argc, char *argv[])
 	qboolean	dolist = false;
 	qboolean	humanlist = false;
 	qboolean	docheck = false;
+	qboolean	doextract = false;
 	
 	char		*file = NULL;
 
@@ -195,7 +259,15 @@ int main (int argc, char *argv[])
 			docheck = true;
 			file = argv[++i];
 			
-			if(!file)
+			if (!file)
+				Error ("Invalid file");
+		}
+		else if (!strcmp (argv[i], "-extract"))
+		{
+			doextract = true;
+			file = argv[++i];
+			
+			if (!file)
 				Error ("Invalid file");
 		}
 		else
@@ -212,6 +284,8 @@ int main (int argc, char *argv[])
 		List (humanlist);
 	else if (docheck)
 		Check (file);
+	else if (doextract)
+		ExtractFile (file);
 	
 	return 0;
 }
