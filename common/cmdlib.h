@@ -90,7 +90,7 @@ void CRC_ProcessByte(unsigned short *crcvalue, byte data);
 unsigned short CRC_Value(unsigned short crcvalue);
 
 void	CreatePath (char *path);
-void CopyFile (char *from, char *to);
+void	QCopyFile (char *from, char *to);
 
 extern	qboolean		archive;
 extern	char			archivedir[1024];

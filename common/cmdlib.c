@@ -136,7 +136,7 @@ char *ExpandPathAndArchive (char *path)
 		if (n <= 0)
 			Error("archive");
 
-		CopyFile (expanded, archivename);
+		QCopyFile (expanded, archivename);
 	}
 	return expanded;
 }
@@ -880,7 +880,7 @@ CopyFile
   Used to archive source files
 ============
 */
-void CopyFile (char *from, char *to)
+void	QCopyFile (char *from, char *to)
 {
 	void	*buffer;
 	int		length;

@@ -8,7 +8,17 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "cmdlib.h"
+
+#ifdef WIN32
+#include "dirent.h"
+#else
+#include <dirent.h>
+#endif
+
 #include <stdint.h>
+
+#define MAX_PAK_ENTRIES	4096	// from qfiles.c
+#define	MAX_ENTRY_NAME	56
 
 typedef struct
 {
@@ -19,16 +29,15 @@ typedef struct
 
 typedef struct
 {
-	char		filename[56];
+	char		filename[MAX_ENTRY_NAME];
 	uint32_t	offset;
 	uint32_t	size;
 } pakentry_t;
 
-
 FILE	*fp;
 
 pakheader_t		pak_header;
-pakentry_t		pak_entries[4096];	// from qfiles.c
+pakentry_t		pak_entries[MAX_PAK_ENTRIES];
 int				pak_entry_ctr = 0;
 
 void LoadPak (char *pakfile)
@@ -47,7 +56,7 @@ void LoadPak (char *pakfile)
 	pak_header.dirsize = LittleLong(pak_header.dirsize);
 	num_entries = pak_header.dirsize / sizeof(pakentry_t);
 	
-	if (num_entries >= (sizeof(pak_entries) / sizeof(pak_entries[0])))
+	if (num_entries >= MAX_PAK_ENTRIES)
 		Error ("Too many files");
 	
 	SafeSeek (fp, pak_header.diroffset);
@@ -61,6 +70,8 @@ void LoadPak (char *pakfile)
 
 		pak_entries[pak_entry_ctr++] = pak_entry;
 	}
+	
+	printf ("%s contains %d files.\n", pakfile, pak_entry_ctr);
 }
 
 char *HumanReadableSize (uint32_t size)
@@ -201,13 +212,118 @@ void ExtractAll (char *dir)
 	exit (0);
 }
 
+char *RemoveFirstDirFromPath (char *path)
+{
+	char *src = path;
+	
+	while (*src != '/' && *src != '\\')
+		++src;
+	
+	return src + 1;
+}
+
+void CopyFromDirectory(FILE *pakf, char *basepath)
+{
+	char			path[2048];
+	struct dirent	*dp;
+	DIR				*dir;
+	pakentry_t		entry;
+	FILE			*entryf;
+	char			*entry_path;
+	void			*buffer;
+
+	dir = opendir (basepath);
+	if (!dir)
+		Error ("Unable to open %s", basepath);
+
+	while ((dp = readdir (dir)) != NULL)
+	{
+		if (!strcmp (dp->d_name, ".") || !strcmp (dp->d_name, ".."))
+			continue;
+		
+		if (dp->d_type == S_IFREG)
+		{
+			snprintf (path, sizeof(path) - 1, "%s/%s", basepath, dp->d_name);
+			
+			entry_path = RemoveFirstDirFromPath (path);
+			entryf = SafeOpenRead (path);
+			
+			strncpy (entry.filename, entry_path, MAX_ENTRY_NAME - 1);
+			entry.offset = filelength (pakf);
+			entry.size = filelength (entryf);
+			
+			buffer = malloc (entry.size);
+			if (!buffer)
+				Error ("Unable to alloclate buffer");
+			
+			SafeRead (entryf, buffer, entry.size);
+			fclose (entryf);
+			
+			SafeSeek (pakf, entry.offset);
+			SafeWrite (pakf, buffer, entry.size);
+			
+			free (buffer);
+			
+			if (pak_entry_ctr >= MAX_PAK_ENTRIES)
+				Error ("Too many files");
+			
+			pak_entries[pak_entry_ctr++] = entry;
+			
+			printf ("%s added\n", entry_path);
+		}
+		
+		if (dp->d_type == S_IFDIR)
+		{
+			strcpy (path, basepath);
+			strcat (path, "/");
+			strcat (path, dp->d_name);
+
+			CopyFromDirectory (pakf, path);
+		}
+	}
+
+	closedir (dir);
+}
+
+void Create (char *pakfile, char *dir)
+{
+	FILE *pakf;
+	
+	memcpy(pak_header.magic, "PACK", 4);
+	pak_header.diroffset = 0;
+	pak_header.dirsize = 0;
+	
+	pak_entry_ctr = 0;
+	
+	pakf = SafeOpenWrite (pakfile);
+	SafeWrite (pakf, &pak_header, sizeof(pakheader_t));
+	
+	CopyFromDirectory (pakf, dir);
+	
+	pak_header.diroffset = filelength (pakf);
+	pak_header.dirsize = pak_entry_ctr * sizeof(pakentry_t);
+	
+	SafeSeek (pakf, pak_header.diroffset);
+	SafeWrite (pakf, &pak_entries[0], pak_header.dirsize);
+	
+	SafeSeek (pakf, 0);
+	SafeWrite (pakf, &pak_header, sizeof(pakheader_t));
+	
+	fclose (pakf);
+	
+	printf ("%s created, it contains %d files.\n", pakfile, pak_entry_ctr);
+	
+	exit (0);
+}
+
 char usage[] = "usage: qpak [options] pakfile\n"
 			   "options:\n"
 			   "-list\t\tlists the content of pakfile\n"
 			   "-listh\t\tlists the content of pakfile with human readable sizes\n"
 			   "-check file\tchecks if pakfile contains file\n"
 			   "-extract file\textracts file without directory\n"
-			   "-extractall dir\textracts the content of pakfile into dir while keeping the structure\n";
+			   "-extractall dir\textracts the content of pakfile into dir while keeping the structure\n"
+			   "-create dir\tcreates pakfile from the contents of dir\n";
 
 int main (int argc, char *argv[])
 {
@@ -219,6 +335,7 @@ int main (int argc, char *argv[])
 	qboolean	docheck;
 	qboolean	doextract;
 	qboolean	doextractall;
+	qboolean	docreate;
 	char		*file;
 	char		*dir;
 	
@@ -228,6 +345,7 @@ int main (int argc, char *argv[])
 	docheck = false;
 	doextract = false;
 	doextractall = false;
+	docreate = false;
 	file = NULL;
 	dir = NULL;
 
@@ -269,6 +387,14 @@ int main (int argc, char *argv[])
 			if(!dir)
 				Error ("Invalid directory");
 		}
+		else if (!strcmp (argv[i], "-create"))
+		{
+			docreate = true;
+			dir = argv[++i];
+			
+			if(!dir)
+				Error ("Invalid directory");
+		}
 		else
 			Error ("Unknown option '%s'\n%s", argv[i], usage);
 	}
@@ -277,9 +403,8 @@ int main (int argc, char *argv[])
 	if (!pakfile)
 		Error ("pakfile is missing");
 	
-	LoadPak (pakfile);
-	
-	printf ("%s contains %d files.\n", pakfile, pak_entry_ctr);
+	if (!docreate)
+		LoadPak (pakfile);
 	
 	if (dolist)
 		List (humanlist);
@@ -289,6 +414,8 @@ int main (int argc, char *argv[])
 		ExtractFile (file);
 	else if (doextractall)
 		ExtractAll (dir);
+	else if (docreate)
+		Create (pakfile, dir);
 	
 	return 0;
 }
