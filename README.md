@@ -64,7 +64,8 @@ modelgen torch.qc`             # creates torch.mdl out of files in ~/quake/id1/m
 
 ### My utilities
 
-`qpak`: viewing/extracting *.pak* files.
+`qpak`: viewing/extracting/creating *.pak* files.
+`qwad`: viewing *.wad* files.
 
 ## Example
 

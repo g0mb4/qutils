@@ -102,3 +102,8 @@ add_executable(qpak ${src})
 target_include_directories(qpak PUBLIC ./common)
 target_link_libraries(qpak cmdlib)
 
+# qwad
+file(GLOB_RECURSE src qwad/*.c)
+add_executable(qwad ${src})
+target_include_directories(qwad PUBLIC ./common)
+target_link_libraries(qwad cmdlib)
