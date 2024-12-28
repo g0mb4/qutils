@@ -14,7 +14,6 @@
 #else
 #include <sys/stat.h>
 #include <dirent.h>
-#define putch	putchar
 #endif
 
 #include <stdint.h>
@@ -104,7 +103,7 @@ void List (qboolean human_readable)
 		printf ("%s", pak_entries[i].filename);
 		
 		while (len++ < 56)
-			putch ('-');
+			putchar ('-');
 		
 		if (human_readable)
 			printf ("%s\n", HumanReadableSize (pak_entries[i].size));
